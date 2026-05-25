@@ -84,11 +84,9 @@ function loadTokens() {
 }
 function saveTokens(t) {
   try { writeFileSync(TOKEN_FILE, JSON.stringify(t)); } catch (_) {}
-  // Log refresh token on every save — makes it easy to copy to Render env vars
+  // Only log that a refresh happened, never log the token value itself
   if (t.refresh_token) {
-    console.log('\n🔑 REFRESH TOKEN (copy to Render env var TESLA_REFRESH_TOKEN):');
-    console.log(t.refresh_token);
-    console.log('');
+    console.log('🔑 Tokens refreshed and saved.');
   }
 }
 
