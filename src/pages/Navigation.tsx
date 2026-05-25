@@ -10,9 +10,13 @@ export interface NavDest { lat: number; lon: number; name: string }
 
 const QUICK_DESTINATIONS = [
   { label: '⚡ Supercharger', query: 'Tesla Supercharger' },
-  { label: '🍔 Food', query: 'restaurant near me' },
-  { label: '🛒 Grocery', query: 'grocery store near me' },
-  { label: '☕ Coffee', query: 'coffee shop near me' },
+  { label: '🍔 Food', query: 'restaurant' },
+  { label: '🛒 Grocery', query: 'supermarket' },
+  { label: '☕ Coffee', query: 'cafe' },
+  { label: '⛽ Gas', query: 'gas station' },
+  { label: '🅿️ Parking', query: 'parking' },
+  { label: '🏥 Hospital', query: 'hospital' },
+  { label: '🛍️ Mall', query: 'shopping mall' },
 ]
 
 function isTeslaBrowser() {
@@ -73,7 +77,9 @@ export default function Navigation({ onOpenMap }: { onOpenMap?: (dest: NavDest) 
       const locParam = carLocation ? `&lat=${carLocation.lat}&lon=${carLocation.lon}` : ''
       const r = await fetch(`/api/tesla/geocode?q=${encodeURIComponent(q)}${locParam}`)
       const d: Place[] = await r.json()
-      setResults(d.slice(0, 5))
+      // Filter out pure address results when searching for POIs
+      const filtered = d.filter(p => p.display_name).slice(0, 6)
+      setResults(filtered)
     } catch { setResults([]) }
     setSearching(false)
   }
@@ -123,9 +129,14 @@ export default function Navigation({ onOpenMap }: { onOpenMap?: (dest: NavDest) 
 
       {isTesla && (
         <p className="nav-hint">
-          ⚡ Tesla Nav = built-in nav &nbsp;|&nbsp;
-          🗺️ Live Map = in-app with police alerts &nbsp;|&nbsp;
-          🚔 Waze = opens Waze
+          ⚡ <b>Tesla Nav</b> = sends to built-in screen &nbsp;|&nbsp;
+          🗺️ <b>Live Map</b> = in-app map with 🚔 police pins + route &nbsp;|&nbsp;
+          � <b>Google</b> = opens Google Maps
+        </p>
+      )}
+      {!isTesla && (
+        <p className="nav-hint">
+          ⚡ = send to Tesla screen &nbsp;·&nbsp; 🗺️ = Live Map with police alerts &nbsp;·&nbsp; 📍 = Google Maps
         </p>
       )}
 

@@ -63,6 +63,8 @@ export default function MapView({ initialDest }: Props) {
   const [activeDest, setActiveDest] = useState<MapDest | null>(null)
   const [routing, setRouting] = useState(false)
   const [sentOk, setSentOk] = useState(false)
+  const [policeList, setPoliceList] = useState<Incident[]>([])
+  const [showPolicePanel, setShowPolicePanel] = useState(false)
 
   const loadIncidents = useCallback(async (map: L.Map, center: { lat: number; lon: number }) => {
     try {
@@ -96,11 +98,13 @@ export default function MapView({ initialDest }: Props) {
           .bindPopup(`<b>${ICONS[inc.type] ?? '⚠️'} ${inc.type.replace('_', ' ')}</b>${inc.street ? `<br/>📍 ${inc.street}` : ''}${inc.reportRating ? `<br/>👍 ${inc.reportRating} reports` : ''}`)
         incMarkersRef.current.push(m)
       })
-      const police = data.filter(i => i.type === 'POLICE').length
+      const police = data.filter(i => i.type === 'POLICE')
       const hazards = data.filter(i => i.type === 'HAZARD' || i.type === 'ACCIDENT').length
-      setPoliceCount(police)
-      setStatus(police > 0
-        ? `🚔 ${police} police · ⚠️ ${hazards} hazards nearby`
+      setPoliceCount(police.length)
+      setPoliceList(police)
+      if (police.length > 0) setShowPolicePanel(true)
+      setStatus(police.length > 0
+        ? `🚔 ${police.length} police · ⚠️ ${hazards} hazards nearby`
         : hazards > 0 ? `⚠️ ${hazards} hazards nearby` : '✅ No alerts nearby')
     } catch {
       setStatus('Map ready — tap 🚔 to refresh alerts')
@@ -206,9 +210,34 @@ export default function MapView({ initialDest }: Props) {
     <div className="mapview-page">
       <div className={`map-status-bar${policeCount > 0 ? ' has-police' : ''}`}>
         <span className="map-status-text">{status}</span>
-        {policeCount > 0 && <span className="police-badge">🚔 {policeCount}</span>}
+        {policeCount > 0 && (
+          <button className="police-badge" onClick={() => setShowPolicePanel(p => !p)}>
+            🚔 {policeCount} {showPolicePanel ? '▲' : '▼'}
+          </button>
+        )}
         <button className="map-refresh-btn" onClick={() => carPos && mapRef.current && loadIncidents(mapRef.current, carPos)}>↻</button>
       </div>
+
+      {/* Police alert panel — expands below status bar */}
+      {showPolicePanel && policeList.length > 0 && (
+        <div className="police-panel">
+          <div className="police-panel-header">
+            🚔 Police Reports Nearby
+            <button className="police-panel-close" onClick={() => setShowPolicePanel(false)}>✕</button>
+          </div>
+          {policeList.map((p, i) => (
+            <div key={i} className="police-panel-row">
+              <span className="police-dot" />
+              <span className="police-street">{p.street ?? 'Nearby road'}</span>
+              {p.reportRating && <span className="police-rating">👍 {p.reportRating}</span>}
+              <button
+                className="police-zoom-btn"
+                onClick={() => mapRef.current?.setView([p.lat, p.lon], 16)}
+              >📍</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {routeInfo && activeDest && (
         <div className="route-bar">

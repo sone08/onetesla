@@ -685,11 +685,70 @@ h2.vehicle-name {
   padding: 4px 10px;
   border-radius: 20px;
   letter-spacing: 0.5px;
+  border: none;
+  cursor: pointer;
   animation: pulse-badge 1.5s ease-in-out infinite;
 }
 @keyframes pulse-badge {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+/* ── Police alert panel ─────────────────────────── */
+.police-panel {
+  background: rgba(227, 25, 55, 0.12);
+  border-bottom: 1px solid rgba(227, 25, 55, 0.4);
+  padding: 8px 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.police-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff6b6b;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+.police-panel-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  min-height: 28px;
+  min-width: 28px;
+}
+.police-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+  color: var(--text);
+}
+.police-panel-row:last-child { border-bottom: none; }
+.police-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.police-street { flex: 1; }
+.police-rating { color: var(--muted); font-size: 12px; }
+.police-zoom-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 30px;
 }
 .map-refresh-btn {
   background: var(--surface2);

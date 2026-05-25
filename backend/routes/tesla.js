@@ -465,12 +465,12 @@ router.get('/incidents', async (req, res) => {
 router.get('/geocode', async (req, res) => {
   try {
     const { q, lat, lon } = req.query;
-    const params = { q, format: 'json', limit: 7, addressdetails: 1 };
+    const params = { q, format: 'json', limit: 8, addressdetails: 1, extratags: 1 };
     // Bias results to car's location (viewbox = ~100km around car)
     if (lat && lon) {
-      const delta = 1.0 // ~100km
-      params.viewbox = `${parseFloat(lon)-delta},${parseFloat(lat)+delta},${parseFloat(lon)+delta},${parseFloat(lat)-delta}`
-      params.bounded = 0 // prefer but don't restrict to viewbox
+      const delta = 0.5; // ~50km tight box — much better POI results
+      params.viewbox = `${parseFloat(lon)-delta},${parseFloat(lat)+delta},${parseFloat(lon)+delta},${parseFloat(lat)-delta}`;
+      params.bounded = 0; // prefer but don't restrict to viewbox
     }
     const response = await axios.get('https://nominatim.openstreetmap.org/search', {
       params,
@@ -478,7 +478,7 @@ router.get('/geocode', async (req, res) => {
     });
     res.json(response.data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: clientError(err) });
   }
 });
 
