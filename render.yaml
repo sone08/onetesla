@@ -24,13 +24,13 @@ services:
       - key: TESLA_CLIENT_SECRET
         sync: false
       - key: TESLA_REDIRECT_URI
-        sync: false      # set to https://your-app.onrender.com/api/tesla/callback
+        value: https://onetesla.onrender.com/api/tesla/callback
       - key: TESLA_AUTH_URL
         value: https://auth.tesla.com/oauth2/v3
       - key: TESLA_AUDIENCE
         value: https://fleet-api.prd.na.vn.cloud.tesla.com
       - key: NGROK_URL
-        sync: false      # set to https://your-app.onrender.com
+        value: https://onetesla.onrender.com
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
