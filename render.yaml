@@ -4,10 +4,12 @@
 services:
   - type: web
     name: onetesla
-    runtime: docker
+    runtime: node
     region: oregon
     plan: free
     healthCheckPath: /health
+    buildCommand: npm ci --include=dev && npm run build && cd backend && npm ci --omit=dev
+    startCommand: node backend/server.js
     envVars:
       - key: NODE_ENV
         value: production
