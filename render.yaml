@@ -16,6 +16,7 @@ services:
       - key: PORT
         value: 3000
       # ── Set these in Render dashboard ────────────────────────────────────
+      # ── Tesla OAuth ──────────────────────────────────────────────────────
       - key: TESLA_CLIENT_ID
         sync: false
       - key: TESLA_CLIENT_SECRET
@@ -28,20 +29,28 @@ services:
         value: https://fleet-api.prd.na.vn.cloud.tesla.com
       - key: NGROK_URL
         value: https://onetesla.onrender.com
+      # ── App Security ─────────────────────────────────────────────────────
+      - key: APP_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      # ── Push Notifications (VAPID) ────────────────────────────────────────
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
         sync: false
-      # ── Persistent auth (copy from /api/tesla/token-info after login) ────
+      # ── Persistent Tesla Auth (set after first login) ────────────────────
       - key: TESLA_REFRESH_TOKEN
         sync: false
+      - key: TESLA_ACCESS_TOKEN
+        sync: false
+      # ── Fleet API Command Signing ─────────────────────────────────────────
+      - key: TESLA_PUBLIC_KEY
+        sync: false
+      - key: TESLA_PRIVATE_KEY
+        sync: false
       # ── Render API — auto-persist rotated refresh tokens ─────────────────
-      # Get API key: dashboard.render.com → Account Settings → API Keys
-      # Get service ID: your service URL slug, e.g. srv-xxxxxxxx
       - key: RENDER_API_KEY
         sync: false
       - key: RENDER_SERVICE_ID
-        sync: false
-      # ── Private key for signed commands (paste contents of private-key.pem)
-      - key: TESLA_PRIVATE_KEY
         sync: false
