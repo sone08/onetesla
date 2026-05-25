@@ -186,7 +186,7 @@ async function teslaApi(method, path, data = null) {
   }
 }
 
-// ─── Check auth status ────────────────────────────────────────────────────────
+// ─── Check auth status (safe — returns only boolean) ─────────────────────────
 router.get('/status', (req, res) => {
   res.json({
     authenticated: !!(tokenStore.access_token || tokenStore.refresh_token),
@@ -194,8 +194,13 @@ router.get('/status', (req, res) => {
   });
 });
 
-// ─── GET: Show refresh token (for copying to Render env vars) ─────────────────
+// ─── GET: Show refresh token — ONLY accessible from localhost ─────────────────
 router.get('/token-info', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || '';
+  const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  if (!isLocal) {
+    return res.status(403).json({ error: 'This endpoint is only accessible from the server console.' });
+  }
   if (!tokenStore.refresh_token) {
     return res.json({ error: 'No token. Visit /api/tesla/auth to log in first.' });
   }
