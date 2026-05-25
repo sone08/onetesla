@@ -51,6 +51,20 @@ async function sendCommand(vehicleId, command, body = {}) {
   return teslaApi('POST', `/api/1/vehicles/${vehicleId}/command/${command}`, body);
 }
 
+// ─── Sanitize error before sending to client (never leak Tesla API internals) ─
+function clientError(err) {
+  const status = err.response?.status;
+  // Map common Tesla API errors to safe messages
+  if (status === 401) return 'Authentication required';
+  if (status === 408) return 'Vehicle is asleep or offline';
+  if (status === 429) return 'Tesla API rate limit reached, please wait';
+  if (status === 503) return 'Tesla API temporarily unavailable';
+  // Proxy / local errors — safe to surface
+  if (err.code === 'ECONNREFUSED') return 'Command proxy not available';
+  // For everything else return a generic message
+  return 'An error occurred. Check server logs.';
+}
+
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TOKEN_FILE = join(__dirname, '..', '.tokens.json');
@@ -245,7 +259,7 @@ router.get('/vehicles', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('Vehicles error:', err.response?.data || err.message);
-    res.status(500).json({ error: err.message, detail: err.response?.data });
+    res.status(500).json({ error: clientError(err) });
   }
 });
 
@@ -276,7 +290,7 @@ router.get('/vehicles/:id/state', async (req, res) => {
       return res.json({ asleep: true });
     }
     console.error('State error:', errData || err.message);
-    res.status(500).json({ error: err.message, detail: errData });
+    res.status(500).json({ error: clientError(err) });
   }
 });
 
@@ -295,7 +309,7 @@ router.post('/vehicles/:id/command/:command', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('Command error:', err.response?.data || err.message);
-    res.status(500).json({ error: err.message, detail: err.response?.data });
+    res.status(500).json({ error: clientError(err) });
   }
 });
 
