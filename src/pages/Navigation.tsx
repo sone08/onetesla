@@ -75,9 +75,10 @@ export default function Navigation({ onOpenMap }: { onOpenMap?: (dest: NavDest) 
     setSearching(true)
     try {
       const locParam = carLocation ? `&lat=${carLocation.lat}&lon=${carLocation.lon}` : ''
+      // For brand/chain searches, Nominatim works better with nearby city appended
+      // But we pass location so the backend forces bounded results first
       const r = await fetch(`/api/tesla/geocode?q=${encodeURIComponent(q)}${locParam}`)
       const d: Place[] = await r.json()
-      // Filter out pure address results when searching for POIs
       const filtered = d.filter(p => p.display_name).slice(0, 6)
       setResults(filtered)
     } catch { setResults([]) }

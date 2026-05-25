@@ -481,16 +481,25 @@ router.get('/geocode', async (req, res) => {
   try {
     const { q, lat, lon } = req.query;
     const params = { q, format: 'json', limit: 8, addressdetails: 1, extratags: 1 };
-    // Bias results to car's location (viewbox = ~100km around car)
     if (lat && lon) {
-      const delta = 0.5; // ~50km tight box — much better POI results
+      const delta = 0.45; // ~50km box around car
       params.viewbox = `${parseFloat(lon)-delta},${parseFloat(lat)+delta},${parseFloat(lon)+delta},${parseFloat(lat)-delta}`;
-      params.bounded = 0; // prefer but don't restrict to viewbox
+      params.bounded = 1; // FORCE results within viewbox
     }
-    const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+    let response = await axios.get('https://nominatim.openstreetmap.org/search', {
       params,
       headers: { 'User-Agent': 'OneTesla/1.0' }
     });
+    // If bounded search returns nothing, fall back to unbounded (better than 0 results)
+    if (lat && lon && response.data.length === 0) {
+      const fallback = { ...params };
+      delete fallback.bounded;
+      delete fallback.viewbox;
+      response = await axios.get('https://nominatim.openstreetmap.org/search', {
+        params: fallback,
+        headers: { 'User-Agent': 'OneTesla/1.0' }
+      });
+    }
     res.json(response.data);
   } catch (err) {
     res.status(500).json({ error: clientError(err) });
