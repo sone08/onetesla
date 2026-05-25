@@ -11,7 +11,7 @@ services:
     region: oregon
     plan: free           # upgrade to starter ($7/mo) for always-on
     buildCommand: npm install && npm run build && cd backend && npm install
-    startCommand: node backend/server.js
+    startCommand: cd backend && node server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
