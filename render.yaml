@@ -1,0 +1,37 @@
+# render.yaml — Deploy OneTesla to Render.com
+# 1. Push this repo to GitHub
+# 2. Go to https://render.com → New → Blueprint → connect repo
+# 3. Render will read this file and create the service automatically
+# 4. Set the environment variables listed below in the Render dashboard
+
+services:
+  - type: web
+    name: onetesla
+    runtime: node
+    region: oregon
+    plan: free           # upgrade to starter ($7/mo) for always-on
+    buildCommand: npm install && npm run build && cd backend && npm install
+    startCommand: node backend/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      # ── Copy these from your local .env ─────────────────────────────────
+      - key: TESLA_CLIENT_ID
+        sync: false      # set manually in Render dashboard
+      - key: TESLA_CLIENT_SECRET
+        sync: false
+      - key: TESLA_REDIRECT_URI
+        sync: false      # set to https://your-app.onrender.com/api/tesla/callback
+      - key: TESLA_AUTH_URL
+        value: https://auth.tesla.com/oauth2/v3
+      - key: TESLA_AUDIENCE
+        value: https://fleet-api.prd.na.vn.cloud.tesla.com
+      - key: NGROK_URL
+        sync: false      # set to https://your-app.onrender.com
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false

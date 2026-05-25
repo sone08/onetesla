@@ -1,0 +1,846 @@
+/* ══════════════════════════════════════════════════════
+   OneTesla — CarPlay Optimized UI
+   • min 44pt touch targets (Apple HIG requirement)
+   • viewport-fit=cover + safe area insets
+   • landscape-first layout for CarPlay screens
+   • no hover states (touch-only device)
+   • larger fonts for in-car viewing distance (~60cm)
+══════════════════════════════════════════════════════ */
+
+/* ── Reset ────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Disable text selection & callouts (CarPlay) */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+input { -webkit-user-select: text; user-select: text; }
+
+/* ── Design Tokens ────────────────────────────────── */
+:root {
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+  --border: #2a2a2a;
+  --accent: #e31937;
+  --green: #00d084;
+  --amber: #f0a500;
+  --blue: #4a90d9;
+  --text: #f5f5f5;
+  --muted: #888;
+  --radius: 18px;
+  --radius-sm: 12px;
+
+  /* CarPlay safe bottom nav height */
+  --nav-h: 88px;
+
+  /* Safe area support (notch / CarPlay bezel) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ── Base ─────────────────────────────────────────── */
+html {
+  height: 100%;
+  /* Prevent iOS font size boost */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  /* SF Pro on Apple, system font fallback elsewhere */
+  font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  overscroll-behavior: none;
+}
+
+/* ── App Shell ────────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  /* Respect safe areas */
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: calc(var(--safe-top) + 16px) 16px;
+  padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+  /* Smooth momentum scroll on iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Bottom Nav (CarPlay: large, spaced, safe area aware) ─ */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  display: flex;
+  background: rgba(16,16,16,0.96);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100;
+}
+
+.bottom-nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  gap: 5px;
+  cursor: pointer;
+  /* Apple HIG: min 44x44pt touch target */
+  min-height: 44px;
+  padding: 8px 4px;
+  transition: color 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.bottom-nav button span { font-size: 28px; line-height: 1; }
+.bottom-nav button label { pointer-events: none; }
+.bottom-nav button.active { color: var(--accent); }
+
+/* ── Landscape layout (CarPlay is landscape) ────────── */
+@media (orientation: landscape) {
+  .app { flex-direction: row; }
+
+  .bottom-nav {
+    position: fixed;
+    top: 0; bottom: 0; left: 0; right: auto;
+    width: calc(90px + var(--safe-left));
+    height: 100dvh;
+    padding-left: var(--safe-left);
+    padding-bottom: 0;
+    flex-direction: column;
+    border-top: none;
+    border-right: 1px solid var(--border);
+  }
+
+  .content {
+    padding-left: calc(90px + var(--safe-left) + 16px);
+    padding-top: calc(var(--safe-top) + 16px);
+    padding-bottom: 16px;
+  }
+
+  .stats-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .commands-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .tpms-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .quick-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .charge-actions { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Login Screen ─────────────────────────────────── */
+.login-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  gap: 22px;
+  padding: 40px;
+  text-align: center;
+}
+.tesla-logo { font-size: 80px; }
+.login-screen h1 { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; }
+.login-screen p { color: var(--muted); font-size: 17px; max-width: 280px; }
+.auth-btn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 20px 52px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50px;
+  text-decoration: none;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  /* Ensure 44pt min height */
+  min-height: 44px;
+}
+
+/* ── Cards ────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+/* ── Dashboard ────────────────────────────────────── */
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.dashboard h2.vehicle-name,
+h2.vehicle-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.fw-version { font-size: 12px; color: var(--muted); margin-top: 2px; display: block; }
+.refresh-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 50%;
+  width: 44px; height: 44px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.battery-card .battery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.battery-pct { font-size: 52px; font-weight: 900; line-height: 1; }
+.battery-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.battery-range { font-size: 22px; font-weight: 600; color: var(--muted); }
+.charge-limit { font-size: 13px; color: var(--muted); }
+.battery-bar-bg {
+  height: 16px;
+  background: var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.battery-bar-fill { height: 100%; border-radius: 8px; transition: width 0.6s ease; }
+.battery-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+.charge-status { color: var(--muted); font-size: 15px; }
+.charge-status.charging { color: var(--green); font-weight: 600; }
+.port-open { font-size: 13px; color: var(--amber); }
+
+/* ── Stats Grid ───────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  /* 44pt min */
+  min-height: 80px;
+}
+.stat-icon { font-size: 30px; }
+.stat-label { font-size: 14px; color: var(--muted); text-align: center; font-weight: 500; }
+
+/* ── Media Card ───────────────────────────────────── */
+.media-card { display: flex; align-items: center; gap: 16px; }
+.media-icon { font-size: 34px; flex-shrink: 0; }
+.media-info { overflow: hidden; }
+.media-title {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.media-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+/* ── TPMS Card ────────────────────────────────────── */
+.tpms-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+.tpms-unit { font-weight: 400; color: var(--muted); font-size: 13px; }
+.tpms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tpms-tire {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-height: 72px;
+}
+.tpms-tire span { font-size: 24px; font-weight: 800; }
+.tpms-tire label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+
+.last-updated {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* ── Controls ─────────────────────────────────────── */
+.controls h2,
+.charging-page h2,
+.nav-page h2 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 18px;
+  letter-spacing: -0.3px;
+}
+
+.commands-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cmd-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text);
+  /* Enforce 44pt min */
+  min-height: 100px;
+  transition: background 0.1s, border-color 0.1s;
+  width: 100%;
+}
+.cmd-btn:active { background: var(--surface2); border-color: var(--accent); }
+.cmd-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.cmd-btn.loading { border-color: var(--accent); }
+.cmd-icon { font-size: 34px; line-height: 1; }
+.cmd-label { font-size: 14px; font-weight: 600; letter-spacing: 0.1px; }
+
+/* ── Charging ─────────────────────────────────────── */
+.limit-card .limit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.limit-value { font-weight: 800; color: var(--green); font-size: 22px; }
+.limit-slider {
+  width: 100%;
+  accent-color: var(--green);
+  height: 10px;
+  margin-bottom: 18px;
+  cursor: pointer;
+}
+.set-limit-btn {
+  width: 100%;
+  padding: 18px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.charge-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── Navigation ───────────────────────────────────── */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  gap: 12px;
+  margin-bottom: 16px;
+  min-height: 54px;
+}
+.search-icon { font-size: 18px; flex-shrink: 0; }
+.search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 17px;
+  outline: none;
+}
+.search-input::placeholder { color: var(--muted); }
+.clear-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.section-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.quick-section { margin-bottom: 20px; }
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quick-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  min-height: 64px;
+}
+.quick-btn:active { border-color: var(--accent); background: var(--surface2); }
+
+.searching { color: var(--muted); text-align: center; padding: 20px; font-size: 15px; }
+
+.results-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.result-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.result-name {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+.result-actions { display: flex; gap: 8px; }
+.nav-action-btn {
+  flex: 1;
+  padding: 12px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+  letter-spacing: 0.2px;
+}
+.nav-action-btn.tesla { background: var(--accent); color: #fff; }
+.nav-action-btn.waze { background: var(--blue); color: #fff; }
+.nav-action-btn.apple { background: #444; color: #fff; }
+.nav-action-btn:active { opacity: 0.8; }
+
+.sent-card .sent-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.sent-card .sent-dest {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+.sent-actions { display: flex; gap: 8px; }
+
+/* ── Toasts ───────────────────────────────────────── */
+.result-toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+.toast-ok { border-color: var(--green); color: var(--green); }
+.toast-err { border-color: var(--accent); color: var(--accent); }
+
+/* ── Loading / Wake ───────────────────────────────── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60dvh;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 500;
+}
+.spinner {
+  width: 26px; height: 26px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.wake-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60dvh;
+  gap: 18px;
+  text-align: center;
+}
+.car-icon { font-size: 72px; }
+.wake-screen h2 { font-size: 24px; font-weight: 700; }
+.wake-btn {
+  padding: 20px 52px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 19px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+}
+.wake-btn:disabled { opacity: 0.6; }
+
+.splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+/* ── Tesla Browser Banner ─────────────────────────── */
+.tesla-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tesla-banner button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+}
+.tesla-hint {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.nav-hint {
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+/* ── Tesla Browser overrides (15" 1920×1200 screen) ── */
+/* Tesla MCU runs Chromium at ~1920px wide, pointer device */
+@media (min-width: 1200px) and (pointer: fine) {
+  :root { --nav-h: 72px; }
+
+  body { font-size: 18px; }
+
+  .tesla-browser .bottom-nav {
+    width: 110px;
+  }
+  .tesla-browser .bottom-nav button {
+    font-size: 13px;
+    gap: 7px;
+  }
+  .tesla-browser .bottom-nav button span {
+    font-size: 32px;
+  }
+  .tesla-browser .content {
+    padding-left: calc(110px + 24px);
+    padding-right: 24px;
+    padding-top: 24px;
+  }
+  .tesla-browser .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .tesla-browser .commands-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  .tesla-browser .card {
+    padding: 22px;
+  }
+  .tesla-browser .stat-value {
+    font-size: 32px;
+  }
+  /* Hover states for pointer (Tesla has a trackpad/cursor) */
+  .tesla-browser .cmd-btn:hover,
+  .tesla-browser .bottom-nav button:hover {
+    opacity: 0.8;
+    background: var(--surface2);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   MapView — embedded map with police/hazard overlay
+══════════════════════════════════════════════════ */
+.mapview-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--nav-h) - var(--safe-bottom));
+  margin: calc(-1 * (var(--safe-top) + 16px)) -16px 0;
+}
+
+.map-container {
+  flex: 1;
+  width: 100%;
+  background: var(--surface);
+}
+
+/* Force Leaflet map to fill its container */
+.map-container .leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  background: #1a1a2e;
+}
+
+/* Dark-mode tile tint */
+.map-container .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) saturate(0.9);
+}
+
+/* ── Status bar ─────────────────────────────────── */
+.map-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-height: 44px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.map-status-bar.has-police {
+  background: rgba(227, 25, 55, 0.15);
+  border-bottom-color: var(--accent);
+}
+.map-status-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.police-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.map-refresh-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  min-height: 36px;
+  min-width: 36px;
+}
+
+/* ── Route bar ──────────────────────────────────── */
+.route-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+.route-bar-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.route-dest {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.route-meta {
+  font-size: 13px;
+  color: var(--blue);
+  font-weight: 500;
+}
+.route-bar-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.route-send-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+  white-space: nowrap;
+}
+.route-send-btn.sent {
+  background: var(--green);
+}
+.route-clear-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ── FABs ───────────────────────────────────────── */
+.map-fabs {
+  position: absolute;
+  bottom: 20px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 20;
+}
+.map-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Routing overlay ────────────────────────────── */
+.map-routing-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10,10,10,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 30;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Leaflet popup dark theme */
+.leaflet-popup-content-wrapper {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+}
+.leaflet-popup-tip { background: var(--surface2) !important; }
+.leaflet-popup-content { font-size: 14px; line-height: 1.5; }
+.leaflet-popup-close-button { color: var(--muted) !important; font-size: 18px !important; }
+
+/* ══════════════════════════════════════════════════
+   Navigation page — polished action buttons
+══════════════════════════════════════════════════ */
+.nav-action-btn.livemap {
+  background: linear-gradient(135deg, #1a3a6b, #2a5298);
+  color: #fff;
+  border-color: #2a5298;
+}
+.nav-action-btn.livemap:active { background: #1a3a6b; }
+
+/* Alerts / bell nav button */
+.bell-btn {
+  color: var(--amber) !important;
+}
+.bell-btn.active { color: var(--amber) !important; }
+
+/* ── Landscape: map takes full width ────────────── */
+@media (orientation: landscape) {
+  .mapview-page {
+    margin-left: calc(-1 * (90px + var(--safe-left) + 16px));
+    height: 100dvh;
+  }
+}

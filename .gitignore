@@ -1,0 +1,12 @@
+node_modules/
+dist/
+backend/node_modules/
+backend/.env
+backend/.tokens.json
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/public-key.pem
+backend/private-key.pem
+.DS_Store
+*.log
