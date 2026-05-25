@@ -111,20 +111,35 @@ function saveTokens(t) {
 // Get service ID: visible in your service URL, e.g. srv-xxxxxxxx
 async function persistTokenToRender(refreshToken) {
   const { RENDER_API_KEY, RENDER_SERVICE_ID } = process.env;
-  if (!RENDER_API_KEY || !RENDER_SERVICE_ID) return; // silently skip if not configured
+  if (!RENDER_API_KEY || !RENDER_SERVICE_ID) return;
+
+  const headers = {
+    'Authorization': `Bearer ${RENDER_API_KEY}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
 
   try {
+    // Step 1: GET all current env vars so we don't wipe them
+    const existing = await axios.get(
+      `https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars`,
+      { headers, timeout: 10000 }
+    );
+    // API returns [{ envVar: { key, value } }, ...]
+    const current = (existing.data ?? []).map((e) => ({
+      key: e.envVar?.key ?? e.key,
+      value: e.envVar?.key === 'TESLA_REFRESH_TOKEN' ? refreshToken : (e.envVar?.value ?? e.value),
+    }));
+    // If TESLA_REFRESH_TOKEN wasn't in the list yet, add it
+    if (!current.find(e => e.key === 'TESLA_REFRESH_TOKEN')) {
+      current.push({ key: 'TESLA_REFRESH_TOKEN', value: refreshToken });
+    }
+
+    // Step 2: PUT back the full list (Render replaces all vars atomically)
     await axios.put(
       `https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars`,
-      [{ key: 'TESLA_REFRESH_TOKEN', value: refreshToken }],
-      {
-        headers: {
-          'Authorization': `Bearer ${RENDER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        timeout: 10000,
-      }
+      current,
+      { headers, timeout: 10000 }
     );
     console.log('☁️  Refresh token auto-saved to Render env vars.');
   } catch (err) {
