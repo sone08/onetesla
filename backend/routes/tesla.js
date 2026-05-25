@@ -90,17 +90,35 @@ async function getAccessToken() {
   }
 }
 
-// ─── Helper: Tesla Fleet API request ──────────────────────────────────────────
+// ─── Helper: Tesla Fleet API request (auto-refreshes token on 401) ───────────
 async function teslaApi(method, path, data = null) {
-  const token = tokenStore.access_token || await getAccessToken();
-  const baseUrl = TESLA_AUDIENCE;
-  const response = await axios({
+  const makeReq = async (token) => axios({
     method,
-    url: `${baseUrl}${path}`,
+    url: `${TESLA_AUDIENCE}${path}`,
     headers: { Authorization: `Bearer ${token}` },
     data
   });
-  return response.data;
+
+  // Try with current access token first
+  let token = tokenStore.access_token;
+  if (!token) token = await getAccessToken();
+
+  try {
+    const response = await makeReq(token);
+    return response.data;
+  } catch (err) {
+    // On 401 — access token expired, force a refresh and retry once
+    if (err.response?.status === 401) {
+      try {
+        token = await getAccessToken();
+        const response = await makeReq(token);
+        return response.data;
+      } catch (retryErr) {
+        throw retryErr;
+      }
+    }
+    throw err;
+  }
 }
 
 // ─── Check auth status ────────────────────────────────────────────────────────
