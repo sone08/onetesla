@@ -98,9 +98,37 @@ function loadTokens() {
 }
 function saveTokens(t) {
   try { writeFileSync(TOKEN_FILE, JSON.stringify(t)); } catch (_) {}
-  // Only log that a refresh happened, never log the token value itself
   if (t.refresh_token) {
     console.log('🔑 Tokens refreshed and saved.');
+    // Auto-persist to Render env vars so token survives redeploys/restarts
+    persistTokenToRender(t.refresh_token).catch(() => {});
+  }
+}
+
+// ─── Persist refresh token to Render env var (survives redeploys) ─────────────
+// Requires RENDER_API_KEY and RENDER_SERVICE_ID set in Render dashboard.
+// Get API key: https://dashboard.render.com/u/settings → API Keys
+// Get service ID: visible in your service URL, e.g. srv-xxxxxxxx
+async function persistTokenToRender(refreshToken) {
+  const { RENDER_API_KEY, RENDER_SERVICE_ID } = process.env;
+  if (!RENDER_API_KEY || !RENDER_SERVICE_ID) return; // silently skip if not configured
+
+  try {
+    await axios.put(
+      `https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars`,
+      [{ key: 'TESLA_REFRESH_TOKEN', value: refreshToken }],
+      {
+        headers: {
+          'Authorization': `Bearer ${RENDER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    console.log('☁️  Refresh token auto-saved to Render env vars.');
+  } catch (err) {
+    console.warn('⚠️  Could not persist token to Render:', err.response?.data?.message || err.message);
   }
 }
 

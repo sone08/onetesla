@@ -33,6 +33,13 @@ services:
       # ── Persistent auth (copy from /api/tesla/token-info after login) ────
       - key: TESLA_REFRESH_TOKEN
         sync: false
+      # ── Render API — auto-persist rotated refresh tokens ─────────────────
+      # Get API key: dashboard.render.com → Account Settings → API Keys
+      # Get service ID: your service URL slug, e.g. srv-xxxxxxxx
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_SERVICE_ID
+        sync: false
       # ── Private key for signed commands (paste contents of private-key.pem)
       - key: TESLA_PRIVATE_KEY
         sync: false
