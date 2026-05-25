@@ -35,12 +35,19 @@ export default function Controls() {
         body: JSON.stringify(cmd.body || {})
       })
       const d = await r.json()
-      setResult(d.response?.result ? `✅ ${cmd.label} successful` : `❌ ${cmd.label} failed`)
+      if (d.error === 'unsigned_cmds_disabled') {
+        setResult('⚠️ Vehicle requires signed commands — enable in Tesla developer dashboard')
+      } else if (d.response?.result) {
+        setResult(`✅ ${cmd.label} successful`)
+      } else {
+        const reason = d.response?.reason || d.error || 'unknown error'
+        setResult(`❌ ${cmd.label} failed: ${reason}`)
+      }
     } catch {
-      setResult(`❌ Command failed`)
+      setResult(`❌ Network error — is the car awake?`)
     }
     setLoading(null)
-    setTimeout(() => setResult(null), 3000)
+    setTimeout(() => setResult(null), 5000)
   }
 
   return (

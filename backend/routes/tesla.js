@@ -19,13 +19,30 @@ const {
 
 // Persist tokens to disk so they survive backend restarts
 function loadTokens() {
+  // 1. Try disk (survives restarts, not redeploys)
   try {
-    if (existsSync(TOKEN_FILE)) return JSON.parse(readFileSync(TOKEN_FILE, 'utf8'));
+    if (existsSync(TOKEN_FILE)) {
+      const t = JSON.parse(readFileSync(TOKEN_FILE, 'utf8'));
+      if (t.refresh_token) return t;
+    }
   } catch (_) {}
+  // 2. Fall back to env vars — set TESLA_REFRESH_TOKEN in Render dashboard to survive redeploys
+  if (process.env.TESLA_REFRESH_TOKEN) {
+    return {
+      access_token: process.env.TESLA_ACCESS_TOKEN || null,
+      refresh_token: process.env.TESLA_REFRESH_TOKEN,
+    };
+  }
   return { access_token: null, refresh_token: null };
 }
 function saveTokens(t) {
   try { writeFileSync(TOKEN_FILE, JSON.stringify(t)); } catch (_) {}
+  // Log refresh token on every save — makes it easy to copy to Render env vars
+  if (t.refresh_token) {
+    console.log('\n🔑 REFRESH TOKEN (copy to Render env var TESLA_REFRESH_TOKEN):');
+    console.log(t.refresh_token);
+    console.log('');
+  }
 }
 
 let tokenStore = loadTokens();
@@ -82,10 +99,11 @@ async function getAccessToken() {
     const response = await axios.post(`${TESLA_AUTH_URL}/token`, params.toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
-    tokenStore = response.data;
+    tokenStore = { ...tokenStore, ...response.data };
     saveTokens(tokenStore);
     return tokenStore.access_token;
   } catch (err) {
+    console.error('Token refresh failed:', err.response?.data || err.message);
     throw new Error('Token refresh failed');
   }
 }
@@ -123,7 +141,21 @@ async function teslaApi(method, path, data = null) {
 
 // ─── Check auth status ────────────────────────────────────────────────────────
 router.get('/status', (req, res) => {
-  res.json({ authenticated: !!tokenStore.access_token });
+  res.json({
+    authenticated: !!(tokenStore.access_token || tokenStore.refresh_token),
+    has_refresh_token: !!tokenStore.refresh_token,
+  });
+});
+
+// ─── GET: Show refresh token (for copying to Render env vars) ─────────────────
+router.get('/token-info', (req, res) => {
+  if (!tokenStore.refresh_token) {
+    return res.json({ error: 'No token. Visit /api/tesla/auth to log in first.' });
+  }
+  res.json({
+    refresh_token: tokenStore.refresh_token,
+    instruction: 'Copy refresh_token → Render dashboard → Environment → TESLA_REFRESH_TOKEN'
+  });
 });
 
 // ─── POST: Register app with Tesla Fleet API (one-time required step) ─────────
@@ -185,6 +217,10 @@ router.get('/vehicles/:id/state', async (req, res) => {
     const errData = err.response?.data;
     const status = err.response?.status;
     const msg = errData?.error || err.message || '';
+    // Not authenticated — token missing or refresh failed
+    if (msg.includes('Not authenticated') || msg.includes('Token refresh failed') || status === 401) {
+      return res.json({ auth_required: true });
+    }
     // 408 or any "offline/asleep" message = asleep
     if (status === 408 || msg.includes('offline') || msg.includes('asleep') || msg.includes('unavailable')) {
       return res.json({ asleep: true });
@@ -195,9 +231,6 @@ router.get('/vehicles/:id/state', async (req, res) => {
 });
 
 // ─── POST: Send vehicle command ───────────────────────────────────────────────
-// Commands: door_lock, door_unlock, honk_horn, flash_lights,
-//           auto_conditioning_start, auto_conditioning_stop,
-//           charge_start, charge_stop, set_charge_limit, actuate_trunk
 router.post('/vehicles/:id/command/:command', async (req, res) => {
   try {
     const data = await teslaApi(
@@ -205,9 +238,19 @@ router.post('/vehicles/:id/command/:command', async (req, res) => {
       `/api/1/vehicles/${req.params.id}/command/${req.params.command}`,
       req.body
     );
+    // Tesla returns result in data.response.result
+    const result = data?.response;
+    if (result?.result === false && result?.reason === 'unsigned_cmds_disabled') {
+      return res.status(400).json({
+        error: 'unsigned_cmds_disabled',
+        message: 'Vehicle requires signed commands. Enable Fleet API signed commands in your Tesla developer account.',
+        response: result
+      });
+    }
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Command error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message, detail: err.response?.data });
   }
 });
 

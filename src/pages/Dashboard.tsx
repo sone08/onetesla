@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [waking, setWaking] = useState(false)
   const [wakeStatus, setWakeStatus] = useState('')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [authRequired, setAuthRequired] = useState(false)
 
   useEffect(() => {
     fetch('/api/tesla/vehicles')
@@ -47,6 +48,7 @@ export default function Dashboard() {
     try {
       const r = await fetch(`/api/tesla/vehicles/${id}/state`)
       const d = await r.json()
+      if (d.auth_required) { setLoading(false); setAuthRequired(true); return false }
       if (d.asleep) { setLoading(false); return false } // return false = not ready yet
       const cs = d.chargeState?.response
       const cl = d.climateState?.response
@@ -135,6 +137,19 @@ export default function Dashboard() {
   }
 
   if (loading) return <div className="loading"><div className="spinner" />Loading vehicle data...</div>
+
+  if (authRequired) return (
+    <div className="wake-screen">
+      <div className="car-icon">🔑</div>
+      <h2>Session Expired</h2>
+      <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '16px' }}>
+        Please log in again to reconnect to your Tesla.
+      </p>
+      <button className="wake-btn" onClick={() => window.location.href = '/api/tesla/auth'}>
+        🔐 Log In with Tesla
+      </button>
+    </div>
+  )
 
   if (!state) return (
     <div className="wake-screen">
