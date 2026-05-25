@@ -116,6 +116,6 @@ app.get('/{*path}', (req, res) => {
   res.sendFile(join(distPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ OneTesla backend running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ OneTesla backend running on http://0.0.0.0:${PORT}`);
 });
