@@ -20,7 +20,14 @@ app.use(express.json());
 // ─── Tesla required: serve public key for domain verification ─────────────────
 app.get('/.well-known/appspecific/com.tesla.3p.public-key.pem', (req, res) => {
   try {
-    const key = readFileSync(join(__dirname, 'public-key.pem'), 'utf8');
+    // Try file first, fall back to env var (for cloud deploy where file isn't committed)
+    let key;
+    try {
+      key = readFileSync(join(__dirname, 'public-key.pem'), 'utf8');
+    } catch {
+      key = process.env.TESLA_PUBLIC_KEY?.replace(/\\n/g, '\n') ?? null;
+    }
+    if (!key) return res.status(404).send('Public key not found');
     res.setHeader('Content-Type', 'application/x-pem-file');
     res.send(key);
   } catch {
