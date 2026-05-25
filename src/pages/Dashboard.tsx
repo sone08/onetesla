@@ -47,7 +47,7 @@ export default function Dashboard() {
     try {
       const r = await fetch(`/api/tesla/vehicles/${id}/state`)
       const d = await r.json()
-      if (d.asleep) { setLoading(false); return }
+      if (d.asleep) { setLoading(false); return false } // return false = not ready yet
       const cs = d.chargeState?.response
       const cl = d.climateState?.response
       const vs = d.vehicle?.response
@@ -75,8 +75,11 @@ export default function Dashboard() {
         tpms_rr: vs?.tpms_pressure_rr ?? 0,
       })
       setLastUpdated(new Date())
+      setLoading(false)
+      return true // success
     } catch (e) { console.error(e) }
     setLoading(false)
+    return false
   }
 
   async function wakeVehicle() {
@@ -86,6 +89,7 @@ export default function Dashboard() {
     setWakeStatus('Sending wake signal...')
 
     let attempts = 0
+    const displayName = vehicles[0]?.display_name
 
     const sendWake = async () => {
       try {
@@ -95,29 +99,28 @@ export default function Dashboard() {
 
     const poll = async () => {
       attempts++
-      // Re-send wake every 10s — offline cars need repeated pings
-      if (attempts % 2 === 0) {
-        setWakeStatus(`Still waking… retrying (${attempts * 5}s)`)
+
+      // Resend wake every 3 ticks (15s)
+      if (attempts % 3 === 0) {
+        setWakeStatus(`Still waking… resending signal (${attempts * 5}s elapsed)`)
         await sendWake()
       } else {
-        setWakeStatus(`Waiting for car to come online… (${attempts * 5}s)`)
+        setWakeStatus(`Waiting for car to respond… (${attempts * 5}s)`)
       }
 
-      try {
-        const r = await fetch(`/api/tesla/vehicles/${id}/online`)
-        const d = await r.json()
-        if (d.online) {
-          setWakeStatus('Online! Loading data...')
-          setWaking(false)
-          loadState(id, vehicles[0]?.display_name)
-          return
-        }
-      } catch (_) {}
+      // Try to load full state — if it returns true the car is awake and data is loaded
+      const ok = await loadState(id, displayName)
+      if (ok) {
+        setWaking(false)
+        setWakeStatus('')
+        return
+      }
 
       if (attempts < 24) { // up to 2 minutes
         setTimeout(poll, 5000)
       } else {
-        setWakeStatus('')
+        setWakeStatus('Could not wake car after 2 min. Try again.')
+        setTimeout(() => setWakeStatus(''), 4000)
         setWaking(false)
       }
     }
