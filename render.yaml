@@ -1,26 +1,21 @@
 # render.yaml — Deploy OneTesla to Render.com
-# 1. Push this repo to GitHub
-# 2. Go to https://render.com → New → Blueprint → connect repo
-# 3. Render will read this file and create the service automatically
-# 4. Set the environment variables listed below in the Render dashboard
+# Uses Docker so we can run both tesla-http-proxy (Go) and Node.js in one service
 
 services:
   - type: web
     name: onetesla
-    runtime: node
+    runtime: docker
     region: oregon
-    plan: free           # upgrade to starter ($7/mo) for always-on
-    buildCommand: npm install && npm run build && cd backend && npm install
-    startCommand: cd backend && node server.js
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
-      # ── Copy these from your local .env ─────────────────────────────────
+      # ── Set these in Render dashboard ────────────────────────────────────
       - key: TESLA_CLIENT_ID
-        sync: false      # set manually in Render dashboard
+        sync: false
       - key: TESLA_CLIENT_SECRET
         sync: false
       - key: TESLA_REDIRECT_URI
@@ -34,4 +29,10 @@ services:
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
+        sync: false
+      # ── Persistent auth (copy from /api/tesla/token-info after login) ────
+      - key: TESLA_REFRESH_TOKEN
+        sync: false
+      # ── Private key for signed commands (paste contents of private-key.pem)
+      - key: TESLA_PRIVATE_KEY
         sync: false

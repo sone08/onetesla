@@ -1,8 +1,55 @@
 import express from 'express';
 import axios from 'axios';
+import https from 'https';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+
+// ─── Vehicle Command Proxy (signs commands with private key) ──────────────────
+// When running in Docker, the proxy runs on localhost:4443
+const PROXY_URL = process.env.TESLA_PROXY_URL || 'https://127.0.0.1:4443';
+// Proxy uses a self-signed cert — we need to allow it
+const proxyAgent = new https.Agent({ rejectUnauthorized: false });
+
+async function getVehicleVin(vehicleId) {
+  try {
+    const data = await teslaApi('GET', `/api/1/vehicles/${vehicleId}`);
+    return data?.response?.vin || null;
+  } catch { return null; }
+}
+
+// Send a command via the Vehicle Command Proxy (signed) or fall back to Fleet API (unsigned)
+async function sendCommand(vehicleId, command, body = {}) {
+  const vin = await getVehicleVin(vehicleId);
+  if (vin) {
+    try {
+      const token = tokenStore.access_token || await getAccessToken();
+      const resp = await axios({
+        method: 'POST',
+        url: `${PROXY_URL}/api/1/vehicles/${vin}/command/${command}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        data: body,
+        httpsAgent: proxyAgent,
+        timeout: 30000,
+      });
+      return resp.data;
+    } catch (err) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.error || err.message;
+      // If proxy isn't running (ECONNREFUSED) fall through to unsigned
+      if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+        console.warn('Proxy not available, falling back to unsigned Fleet API');
+      } else {
+        throw err; // real error from proxy — surface it
+      }
+    }
+  }
+  // Fallback: unsigned (works on older vehicles / while proxy is starting)
+  return teslaApi('POST', `/api/1/vehicles/${vehicleId}/command/${command}`, body);
+}
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -230,20 +277,15 @@ router.get('/vehicles/:id/state', async (req, res) => {
   }
 });
 
-// ─── POST: Send vehicle command ───────────────────────────────────────────────
+// ─── POST: Send vehicle command (via signed proxy → fallback unsigned) ────────
 router.post('/vehicles/:id/command/:command', async (req, res) => {
   try {
-    const data = await teslaApi(
-      'POST',
-      `/api/1/vehicles/${req.params.id}/command/${req.params.command}`,
-      req.body
-    );
-    // Tesla returns result in data.response.result
+    const data = await sendCommand(req.params.id, req.params.command, req.body);
     const result = data?.response;
     if (result?.result === false && result?.reason === 'unsigned_cmds_disabled') {
       return res.status(400).json({
         error: 'unsigned_cmds_disabled',
-        message: 'Vehicle requires signed commands. Enable Fleet API signed commands in your Tesla developer account.',
+        message: 'Vehicle requires signed commands. Proxy may not be running.',
         response: result
       });
     }
@@ -299,9 +341,9 @@ router.get('/vehicles/:id/location', async (req, res) => {
 router.post('/vehicles/:id/navigate', async (req, res) => {
   try {
     const { lat, lon, order } = req.body;
-    const data = await teslaApi(
-      'POST',
-      `/api/1/vehicles/${req.params.id}/command/navigation_gps_request`,
+    const data = await sendCommand(
+      req.params.id,
+      'navigation_gps_request',
       { lat: parseFloat(lat), lon: parseFloat(lon), order: order ?? 1 }
     );
     res.json(data);
